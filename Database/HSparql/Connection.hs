@@ -13,6 +13,8 @@ module Database.HSparql.Connection
     , askQueryRaw
     , updateQueryRaw
     , describeQueryRaw
+    -- * parse query results
+    , structureContent
     )
 where
 
@@ -20,6 +22,7 @@ import Control.Monad
 import Data.Maybe
 import Network.HTTP
 import Text.XML.Light
+import Text.XML.Light.Lexer (XmlSource)
 import Database.HSparql.QueryGenerator
 import Text.RDF.RDF4H.TurtleParser
 import qualified Data.RDF as RDF
@@ -43,7 +46,7 @@ sparqlResult s = (unqual s) { qURI = Just "http://www.w3.org/2005/sparql-results
 
 -- |Transform the 'String' result from the HTTP request into a two-dimensional
 --  table storing the bindings for each variable in each row.
-structureContent :: String -> Maybe [[BindingValue]]
+structureContent :: XmlSource a => a -> Maybe [[BindingValue]]
 structureContent s =
   do e <- doc
      return $ map (projectResult $ vars e) $ findElements (sparqlResult "result") e
@@ -126,7 +129,7 @@ selectQueryRaw ep q = do
                         , rqBody = ""
                         }
   response <- simpleHTTP request >>= getResponseBody
-  return $ structureContent response
+  return $ structureContent (response :: B.ByteString)
 
 askQueryRaw :: Database.HSparql.Connection.EndPoint -> String -> IO Bool
 askQueryRaw ep q = do
